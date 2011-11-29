@@ -1,13 +1,30 @@
 <html>
 <head>
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js" type="text/javascript"></script>
-<script src="wtk.js"></script>
 </head>
 <body>
-<div id=obj0></div>
-<script>
-$(document).ready(wtk.init);
-</script>
-	
+<style type='text/css'>
+table {margin-left:25px;}
+table tr td {vertical-align:top;padding:5px;}
+</style>
+<h1>wtk (web Tk) demo</h1>
+
+<h2>Demo wtk applications</h2>
+<ul>
+  <li><a href="demo1.html">demo1.html</a> (follow link to run)
+</ul>			
+
+<h2>Code overview</h2>
+<table>
+<tr><td><a href="src.html?f=index.html">index.html</a></td><td>This page.</td></tr>
+<tr><td><a href="src.html?f=server.tcl">server.tcl</a></td><td>Main demo application; it manages the webserver communication and creates wtk interpreters which 
+	actually run demos for a client.</td></tr>
+<tr><td><a href="src.html?f=demo1.html">demo1.html</a></td><td>Web page for an application, which initializes the Javascript side of wtk and connects to the
+	wtk interpreter for this client on the server and waits for further instructions.</td></tr>
+<tr><td><a href="src.html?f=wtk.js">wtk.js</a></td><td>Javascript library for the client side of wtk.</td></tr>
+<tr><td><a href="src.html?f=demo1.tcl">demo1.tcl</a></td><td>wtk code for the specific demo application, run in a separate interpreter on the server for each client.</td></tr>
+<tr><td><a href="src.html?f=wtk.tcl">wtk.tcl</a></td><td>Application (server) side of wtk, which implements the Tk-like API, sending to and receiving messages
+	from the Javascript code on the web side.</td></tr>
+<tr><td><a href="src.html?f=httpd.tcl">httpd.tcl</a></td><td>Generic minihttpd.tcl-based webserver (nothing wtk specific).</td></tr>
+</table>
 </body>
 </html>
