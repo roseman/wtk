@@ -55,6 +55,16 @@ test wtk-1.4 {entry w/ textvariable} {
     assert_equal "Even Newer Value" [.e cget -text]
 } {}
 
+test wtk-1.5 {wm title} {
+    assert_equal "" [wtk::wm title . "blah blah"]
+    assert_equal "document.title='blah blah';" [jsmsgs]
+} {}
+
+test wtk-1.6 {focus} {
+    assert_equal "" [wtk::focus .e]
+    assert_equal {wtk.widgets['obj3'].focus();} [jsmsgs]
+} {}
+
 
 wtk::_reset
 
