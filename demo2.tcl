@@ -4,8 +4,6 @@ wtk::grid [wtk::frame .c -padding "3 3 12 12"] -column 0 -row 0 -sticky nwes
 wtk::grid columnconfigure . 0 -weight 1; wtk::grid rowconfigure . 0 -weight 1
 
 wtk::grid [wtk::entry .c.feet -width 7 -textvariable feet] -column 2 -row 1 -sticky we
-#wtk::grid [wtk::entry .c.feet -textvariable feet] -column 2 -row 1 -sticky we
-#.c.feet configure -width 7
 wtk::grid [wtk::label .c.meters -textvariable meters] -column 2 -row 2 -sticky we
 wtk::grid [wtk::button .c.calc -text "Calculate" -command calculate] -column 3 -row 3 -sticky w
 
