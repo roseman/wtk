@@ -65,6 +65,7 @@ namespace eval ::wtk {
         method id {} {return $id}
         method jqobj {} {return "\$('#[$self id]')"}
         method jsobj {} {return "wtk.widgets\['[$self id]'\]"}
+        method _focus {} {toclient "[$self jsobj].focus();"}
         
         # text variable handling; only relevant if the main types delegate these options to us
         option -text -configuremethod _textchanged
@@ -97,10 +98,10 @@ namespace eval ::wtk {
     
     proc getwidget {id} {return $wtk::wobj($id)}
     
-    proc wm {args} {# placeholder}
-    proc winfo {args} {# placeholder}
-    proc focus {args} {# placeholder}
-    proc bind {args} {# placeholder}
+    proc wm {args} {if {[lindex $args 0]=="title" && [lindex $args 1]=="."} {toclient "document.title='[lindex $args 2]';"}; # placeholder}
+    proc winfo {args} {; # placeholder}
+    proc focus {w} {$w _focus}
+    proc bind {args} {; # placeholder}
     
     # Stuff for defining different widget types here
     #
