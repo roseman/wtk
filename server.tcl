@@ -43,7 +43,7 @@ proc webhandler {op sock} {
             "/wtk.js"       {httpd return $sock [filecontents wtk.js] -mimetype "text/javascript"}
             "/wtkpoll.html" {if !{[sendany $sock $query(sessionid)]} {error "pending"}}
             "/wtkcb.html"   {fromclient $query(sessionid) $query(cmd)}
-            "/src.html"     {httpd return $sock [filecontents $query(f)] -mimetype "text/plain"}
+            "/src.html"     {if {[catch {httpd return $sock [exec pygmentize -f html -O full,style=vs $query(f)]}]!=0} {httpd return $sock [filecontents $query(f)] -mimetype "text/plain"}}
             default         {puts stderr "BAD URL $url"; httpd returnerror 404}
         }
     }
