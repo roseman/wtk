@@ -1,0 +1,73 @@
+package require tcltest
+namespace import tcltest::*
+
+package require control
+control::control assert enabled 1
+namespace import control::assert
+proc assert_equal {expected actual} {if {[string equal $expected $actual]} {return ""} else {error "expected \"$expected\", got \"$actual\""}}
+proc assert_match {matchexpr actual} {if {[regexp $matchexpr $actual]==1} {return ""} else {error "string did not match \"$matchexpr\""}}
+proc assert_no_match {matchexpr actual} {if {[regexp $matchexpr $actual]!=1} {return ""} else {error "string did match \"$matchexpr\""}}
+
+
+source wtk.tcl
+
+set ::msgs ""
+proc sendmsg {msg} {append ::msgs $msg}
+proc jsmsgs {} {set r $::msgs; set ::msgs ""; return $r}
+wtk::init sendmsg
+
+test wtk-1.1 {button} {
+    assert_equal "::.b" [wtk::button .b -text "Hello World"]
+    assert_equal "" [jsmsgs]
+    assert_equal "" [wtk::grid .b]
+    assert_equal "wtk.createButton('obj1','Hello World')" [lindex [split [jsmsgs] ";"] 0]
+    assert_equal "" [.b configure -text "Goodbye"]
+    assert_equal {$('#obj1').html('Goodbye');} [jsmsgs]
+} {}
+
+test wtk-1.2 {label} {
+    assert_equal "::.l" [wtk::label .l -text "Blah"]
+    assert_equal "" [jsmsgs]
+    assert_equal "" [wtk::grid .l]
+    assert_equal "wtk.createLabel('obj2','Blah')" [lindex [split [jsmsgs] ";"] 0]
+    assert_equal "" [.l configure -text "New Text"]
+    assert_equal {$('#obj2').html('New Text');} [jsmsgs]
+} {}
+
+test wtk-1.3 {entry} {
+    assert_equal "::.e" [wtk::entry .e -text ""]
+    assert_equal "" [jsmsgs]
+    assert_equal "" [wtk::grid .e]
+    assert_equal "wtk.createEntry('obj3','')" [lindex [split [jsmsgs] ";"] 0]
+    assert_equal "" [.e configure -text "New Value"]
+    assert_equal {$('#obj3').val('New Value');} [jsmsgs]
+} {}
+
+test wtk-1.4 {entry w/ textvariable} {
+    assert {![info exists ::foo]}
+    assert_equal "" [.e configure -textvariable foo]
+    assert_equal "New Value" $::foo
+    set ::foo "Testing"
+    assert_equal "Testing" [.e cget -text]
+    assert_equal {$('#obj3').val('Testing');} [jsmsgs]
+    wtk::fromclient "EVENT obj3 value Even Newer Value"
+    assert_equal "Even Newer Value" $::foo
+    assert_equal "Even Newer Value" [.e cget -text]
+} {}
+
+
+wtk::_reset
+
+test wtk-2.1 {grid debugging, start state} {
+    set ::GS [wtk::GridState for .]
+    $::GS _debug
+} {master . rows {} columns {} slaves {} tabledata {}}
+
+test wtk-2.2 {add a single widget at 0,0} {
+    wtk::button .b
+    assert_equal "" [$::GS addSlave .b -column 0 -row 0]
+    assert_equal {wtk.newGrid('obj0','grid0');$('#grid0')[0].insertRow(0);$('#grid0')[0].rows[0].insertCell(0);$('#grid0')[0].rows[0].cells[0].appendChild(wtk.widgets['obj1']);} [jsmsgs]
+    $::GS _debug
+} {master . rows 0 columns 0 slaves {.b {-column 0 -row 0}} tabledata {{{0 1 .b}}}}
+
+tcltest::cleanupTests

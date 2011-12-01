@@ -38,6 +38,8 @@ proc webhandler {op sock} {
         switch -exact -- $url {
             "/"             {httpd return $sock [filecontents index.html]}
             "/demo1.html"   {httpd return $sock [newSession demo1.tcl demo1.html]}
+            "/demo2.html"   {httpd return $sock [newSession demo2.tcl demo1.html]}
+            "/demox.html"   {httpd return $sock [newSession demox.tcl demo1.html]}
             "/wtk.js"       {httpd return $sock [filecontents wtk.js] -mimetype "text/javascript"}
             "/wtkpoll.html" {if !{[sendany $sock $query(sessionid)]} {error "pending"}}
             "/wtkcb.html"   {fromclient $query(sessionid) $query(cmd)}
@@ -67,7 +69,7 @@ proc newSession {script webpage} {
     $interp eval source wtk.tcl
     $interp alias sendto toclient $sessionid
     $interp eval wtk::init sendto
-    $interp eval source $script
+    if {[catch {$interp eval source $script}]!=0} {puts $::errorInfo}
     return [string map "%%%SESSIONID%%% $sessionid" [filecontents $webpage]]
 }
 
@@ -77,7 +79,7 @@ proc newSession {script webpage} {
 # This is called when the client wants to send its application instance a message (via 
 # the /wtkcb.html callback in this case), typically an event like a button press. 
 # We invoke the 'wtk::fromclient' routine in the instance's interpreter to process it.
-proc fromclient {sessionid cmd} {[dict get $::session($sessionid) interp] eval wtk::fromclient [list $cmd]}
+proc fromclient {sessionid cmd} {puts "CLIENT: $cmd"; [dict get $::session($sessionid) interp] eval wtk::fromclient [list $cmd]}
 
 
 # toclient -- Send Javascript commands from an app instance to the web client
@@ -85,7 +87,7 @@ proc fromclient {sessionid cmd} {[dict get $::session($sessionid) interp] eval w
 # This is called when the application instance wants to send its client a message,
 # in the form of a Javascript command.  The message is queued and the actual 
 # sending is taken care of by the next routine. 
-proc toclient {sessionid cmd} {dict append ::session($sessionid) msgq $cmd}
+proc toclient {sessionid cmd} {puts "SERVER: $cmd"; dict append ::session($sessionid) msgq $cmd}
 
 
 # sendany -- Deliver messages to the client queued by 'toclient'

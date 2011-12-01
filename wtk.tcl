@@ -22,6 +22,18 @@ namespace eval ::wtk {
         wtk::Widget "." ""
         return ""
     }
+    
+    # for debugging
+    proc _reset {} {
+        variable wobj; variable widgets; variable _nextid; variable _sender
+        foreach {id w} [array get wobj] {$w destroy}
+        unset -nocomplain widgets
+        unset -nocomplain wobj
+        set _nextid -1
+        GridState _reset
+        init $_sender
+        return ""
+    }
 
     proc toclient {cmd} {uplevel #0 $wtk::_sender [list $cmd]}
    
@@ -51,11 +63,12 @@ namespace eval ::wtk {
             return ""
         }
         method id {} {return $id}
-        method jsobj {} {return "\$('#[$self id]')"}
+        method jqobj {} {return "\$('#[$self id]')"}
+        method jsobj {} {return "wtk.widgets\['[$self id]'\]"}
         
         # text variable handling; only relevant if the main types delegate these options to us
         option -text -configuremethod _textchanged
-        option -textvariable
+        option -textvariable -configuremethod _textvarset
         method _textchanged {opt txt {fromwidget 0}} {
             set options($opt) $txt; 
             if {$created && !$fromwidget} {wtk::toclient [$wobj _textchangejs $txt]}
@@ -76,10 +89,18 @@ namespace eval ::wtk {
                 uplevel #0 trace add variable $options(-textvariable) write [list [list $self _textvariablechanged]]
             }
         }
+        method _textvarset {opt var} {
+            set options($opt) $var
+            $self _setuptextvar
+        }
     }
     
     proc getwidget {id} {return $wtk::wobj($id)}
     
+    proc wm {args} {# placeholder}
+    proc winfo {args} {# placeholder}
+    proc focus {args} {# placeholder}
+    proc bind {args} {# placeholder}
     
     # Stuff for defining different widget types here
     #
@@ -112,7 +133,7 @@ namespace eval ::wtk {
         _textvarwidget
         option -command
         method _createjs {} {return "wtk.createButton('[$self id]','[$self cget -text]');"}
-        method _textchangejs {txt} {return "[$self jsobj].html('$txt');"}
+        method _textchangejs {txt} {return "[$self jqobj].html('$txt');"}
         method _event {which} {if {$which eq "pressed"} {uplevel #0 $options(-command)}}
     }
     
@@ -120,26 +141,104 @@ namespace eval ::wtk {
     snit::type label {
         _textvarwidget
         method _createjs {} {return "wtk.createLabel('[$self id]','[$self cget -text]');"}
-        method _textchangejs {txt} {return "[$self jsobj].html('$txt');"}
+        method _textchangejs {txt} {return "[$self jqobj].html('$txt');"}
     }
     
     # Entry widgets
     snit::type entry {
         _textvarwidget
-        method _createjs {} {return "wtk.createEntry('[$self id]','[$self cget -text]');"}
-        method _textchangejs {txt} {return "[$self jsobj].val('$txt');"}
+        option -width -configuremethod _widthchanged
+        method _createjs {} {set r "wtk.createEntry('[$self id]','[$self cget -text]');"; if {$options(-width)!=""} {append r "[$self jsobj].size=$options(-width);"};return $r}
+        method _textchangejs {txt} {return "[$self jqobj].val('$txt');"}
         method _event {which args} {if {$which eq "value"} {$self _textchanged -text $args 1}}
+        method _widthchanged {opt val} {set options($opt) $val; if {[$self _created?]} {wtk::toclient "[$self jsobj].size=$val;"}}
+    }
+    
+    # Frame
+    snit::type frame {
+        _stdwidget
+        option -padding
+        method _createjs {} {return "wtk.createFrame('[$self id]');"}    
     }
     
     # Place a slave inside its master.  Right now this doesn't process any actual grid options.
     proc grid {w args} {
         variable widgets
-        set w [namespace tail $w]
-        set parent [join [lrange [split $w .] 0 end-1] .]
-        if {$parent eq ""} {set parent "."}
-        if {![info exists widgets($parent)]} {error "no parent widget found"}
-        if {![$w _created?]} {$w _create}
-        wtk::toclient "wtk.griditup('[$parent id]', '[$w id]');"
+        switch -exact -- $w {
+            "columnconfigure" {}        
+            "rowconfigure" {}
+            default {
+                set w [namespace tail $w]
+                set parent [join [lrange [split $w .] 0 end-1] .]
+                if {$parent eq ""} {set parent "."}
+                if {![info exists widgets($parent)]} {error "no parent widget found"}
+                if {![$w _created?]} {$w _create}
+                if {[dict keys $args -column]==""} {dict set args -column 0}
+                if {[dict keys $args -row]==""} {dict set args -row 0}
+                ###wtk::toclient "wtk.griditup('[$parent id]','[$w id]');"     
+                [GridState for $parent] addSlave $w {*}$args
+                return ""   
+            }
+        }
+    }
+    
+    # internal state kept for each master
+    snit::type GridState {
+        typevariable states
+        typemethod for {w} {
+            if {![info exists states($w)]} {set states($w) [GridState %AUTO% $w]}
+            return $states($w)
+        }
+        typemethod _reset {} {foreach i [$type info instances] {$i destroy}; unset states}
+        
+        variable rows {}
+        variable columns {}
+        variable slaves ; # array
+        variable tabledata {}
+        variable master
+        variable id
+        constructor {w} {set master $w; set id [string map "obj grid" [$w id]] }
+        method jqobj {} {return "\$('#$id')"}
+        method jsobj {} {return "\$('#$id')\[0\]"}
+        method _debug {} {return [list master $master rows $rows columns $columns slaves [array get slaves] tabledata $tabledata]}
+        method addSlave {w args} {
+            # TODO - verify slave is a descendant of us, handle -in, etc.
+            # NOTE: caller ensures we have a column and row
+            if {[dict keys $args -column] eq "" || [dict keys $args -row] eq ""} {error "need to supply -column and -row"}
+            set slaves($w) $args
+            set colnum [dict get $args -column]; set rownum [dict get $args -row]
+            #puts "\n        BEFORE: $tabledata  -> col=$colnum row=$rownum w=$w"
+            if {$colnum ni $columns} {$self _insertColumn $colnum}
+            if {$rownum ni $rows} {$self _insertRow $rownum}
+            
+            set colidx [lsearch $columns $colnum]; set rowidx [lsearch $rows $rownum]
+            set row [lindex $tabledata $rowidx]
+            #puts "             row=$row, colidx=$colidx"
+            set tabledata [lreplace $tabledata $rowidx $rowidx [lreplace $row $colidx $colidx [lreplace [lindex $row $colidx] 2 2 $w]]]
+            #puts "        AFTER: $tabledata\n"
+            wtk::toclient "[$self jsobj].rows\[$rowidx\].cells\[$colidx\].appendChild(wtk.widgets\['[$w id]'\]);"
+            return ""
+        }
+        method _insertColumn {colnum} {
+            set columns [lsort -integer [concat $columns $colnum]]; set colidx [lsearch $columns $colnum]
+            set new ""; set rowidx 0
+            foreach i $tabledata {
+                lappend new [linsert $i $colidx [list $colidx 1 blank]]
+                wtk::toclient "[$self jsobj].rows\[$rowidx\].insertCell($colidx);"
+                incr rowidx
+            }
+            set tabledata $new
+        }
+        method _insertRow {rownum} {
+            if {$tabledata==""} {wtk::toclient "wtk.newGrid('[$master id]','$id');"}
+            set rows [lsort -integer [concat $rows $rownum]]; set rowidx [lsearch $rows $rownum];
+            wtk::toclient "[$self jsobj].insertRow($rowidx);"
+            set row ""; for {set i 0} {$i<[llength $columns]} {incr i} {
+                lappend row [list $i 1 blank]
+                wtk::toclient "[$self jsobj].rows\[$rowidx\].insertCell($i);"
+            }
+            lappend tabledata $row
+        }
     }
     
 }

@@ -41,9 +41,17 @@ var wtk = {
     createEntry   : function(id, txt) { wtk.CreateWidget(id, 'input', txt,'value').onkeyup = function() {wtk.entryChanged(id);}; },
     entryChanged  : function(id) { wtk.sendto('EVENT '+id+' value '+wtk.widgets[id].value); },
     
+    createFrame   : function(id) { wtk.CreateWidget(id, 'div', '', '');},
+    
     /*
-     * Grid placeholder; for now we simply add a slave as the last child of its master.
+     * Grid .
      */
-    griditup      : function(master,slave) { wtk.widgets[master].appendChild(wtk.widgets[slave]); }
+    
+    newGrid : function(parent,id) {
+        var w = document.createElement('table');
+        w.id = id;
+        wtk.widgets[parent].appendChild(w);
+    },
+    
 };
 
