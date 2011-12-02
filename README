@@ -1,1 +1,2 @@
-Run tclsh8.5 server.tcl
+Requires Snit.  Run tclsh8.5 server.tcl and open your browser to http://localhost:9001
+
