@@ -82,6 +82,9 @@ namespace eval ::wtk {
             set options($opt) $var
             $self _setuptextvar
         }
+        
+        # variable handling; only relevant if -variable option is delegated to us
+        
     }
 
     proc getwidget {id} {return $wtk::wobj($id)}
@@ -90,5 +93,17 @@ namespace eval ::wtk {
     proc winfo {args} {; # placeholder}
     proc focus {w} {$w _focus; return ""}
     proc bind {args} {; # placeholder}
+
+    # Macro that can be used to simplify the definition of any widget
+    snit::macro _stdwidget {} {
+        component W; delegate method * to W
+        constructor {args} {install W using Widget %AUTO% $self; $self configurelist $args}
+    }
+
+    # Macro that can be used to simplify the creation of widgets using -text and -textvariable
+    snit::macro _textvarwidget {} {
+        component W; delegate method * to W; delegate option -textvariable to W; delegate option -text to W 
+        constructor {args} {install W using Widget %AUTO% $self; $self configurelist $args; $W _setuptextvar}
+    }
 
 }

@@ -14,18 +14,6 @@ namespace eval ::wtk {
     # Widgets that receive events from the Javascript side are expected to implement the "_event"
     # method, which is passed the widget-specific type of event and any parameters.
 
-    # Macro that can be used to simplify the definition of any widget
-    snit::macro _stdwidget {} {
-        component W; delegate method * to W
-        constructor {args} {install W using Widget %AUTO% $self; $self configurelist $args}
-    }
-
-    # Macro that can be used to simplify the creation of widgets using -text and -textvariable
-    snit::macro _textvarwidget {} {
-        component W; delegate method * to W; delegate option -textvariable to W; delegate option -text to W 
-        constructor {args} {install W using Widget %AUTO% $self; $self configurelist $args; $W _setuptextvar}
-    }
-
 
     # Button widgets
     snit::type button {
@@ -43,6 +31,46 @@ namespace eval ::wtk {
         method _textchangejs {txt} {return "[$self jqobj].html('$txt');"}
     }
 
+    # Checkbutton
+    snit::type checkbutton {
+        _textvarwidget
+        variable currentvalue 0
+        option -command
+        option -onvalue -default 1 -configuremethod _onoffchanged
+        option -offvalue -default 0 -configuremethod _onoffchanged
+        option -variable -configuremethod _varnameset
+        
+        # TODO : move -variable handling into generic widget base
+        method _createjs {} {set r "wtk.createCheckButton('[$self id]','[$self cget -text]');"; if {$currentvalue==$options(-onvalue)} {append r "[$self jsobj].childNodes\[0\].checked=true;"}; return $r}
+        method _textchangejs {txt} {return "[$self jqobj].children(':last').html('$txt');"}
+        method _event {which} {
+            if {$which in "checked unchecked"} {
+                if {$which=="checked"} {set val $options(-onvalue)} else {set val $options(-offvalue)}
+                $self _changevalue $val 1; uplevel #0 $options(-command)
+            }
+        }
+        method _varnameset {opt var} {set options($opt) $var;
+            if {$var!=""} {
+                if {![uplevel #0 info exists $var]} {uplevel #0 set $var $currentvalue} else {set currentvalue [uplevel #0 set $var]}
+                uplevel #0 trace add variable $var write [list [list $self _varchanged]]
+            }
+        }
+        method _onoffchanged {opt val} {if {$currentvalue==$options($opt)} {set options($opt) $val; $self _changevalue $val} else {set options($opt) $val}}
+        method _varchanged {args} {if {$currentvalue ne [uplevel #0 set $options(-variable)]} {$self _changevalue [uplevel #0 set $options(-variable)]}}; # trace callback
+        method _changevalue {newval {fromwidget 0}} {
+            if {[$self _created?] && !$fromwidget} {
+                if {$newval eq $options(-onvalue) && $options(-onvalue) ne $currentvalue} {
+                    wtk::toclient "[$self jsobj].childNodes\[0\].checked=true;"
+                } elseif {$newval ne $options(-onvalue) && $options(-onvalue) eq $currentvalue} {
+                    wtk::toclient "[$self jsobj].childNodes\[0\].checked=false;"
+                }
+            }
+            set currentvalue $newval
+            if {$options(-variable) ne ""} {uplevel #0 set $options(-variable) [list $newval]}
+        }
+        
+    }
+
     # Entry widgets
     snit::type entry {
         _textvarwidget
@@ -52,6 +80,7 @@ namespace eval ::wtk {
         method _event {which args} {if {$which eq "value"} {$self _textchanged -text $args 1}}
         method _widthchanged {opt val} {set options($opt) $val; if {[$self _created?]} {wtk::toclient "[$self jsobj].size=$val;"}}
     }
+    
 
     # Frame
     snit::type frame {

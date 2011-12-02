@@ -15,7 +15,8 @@ var wtk = {
     },
     
     poller : function() {$.ajax({type:'GET', url:'wtkpoll.html?sessionid='+wtk.sessionid, dataType:'script', 
-                                success: function() {setTimeout(wtk.poller,100);}});},
+                                complete: function() {setTimeout(wtk.poller,100);},
+                                error: function(jqXHR, textStatus, errorThrown) {console.log('ajax error '+textStatus+' '+errorThrown);}});},
     sendto : function(msg) { $.get('wtkcb.html?sessionid='+wtk.sessionid, {cmd : msg});},
     
     /*
@@ -42,6 +43,16 @@ var wtk = {
     entryChanged  : function(id) { wtk.sendto('EVENT '+id+' value '+wtk.widgets[id].value); },
     
     createFrame   : function(id) { wtk.CreateWidget(id, 'div', '', '');},
+    
+    createCheckButton : function(id,txt) { 
+        var w = wtk.CreateWidget(id,'span', '', ''); 
+        var c = w.appendChild(document.createElement('input'));
+        var l = w.appendChild(document.createElement('span'));
+        c.type = 'checkbox';
+        c.onclick = function() {wtk.checkButtonClicked(id);};
+        l.innerHTML = txt;
+    },
+    checkButtonClicked : function(id) { var ev; if (wtk.widgets[id].childNodes[0].checked==true) {ev='checked';} else {ev='unchecked';}; wtk.sendto('EVENT ' + id + ' ' + ev);},
     
     /*
      * Grid .

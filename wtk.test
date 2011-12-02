@@ -66,6 +66,38 @@ test wtk-1.6 {focus} {
 } {}
 
 
+test wtk-1.7 {checkbutton, especially -variable handling} {
+    # variable doesn't exist
+    assert {![info exists ::v1]}
+    assert_equal "" [wtk::grid [wtk::checkbutton .cb -text Checker -variable v1 -onvalue 9 -offvalue 3]]
+    assert_equal "wtk.createCheckButton('obj4','Checker')" [lindex [split [jsmsgs] ";"] 0]
+    assert_equal 3 $::v1
+    wtk::fromclient "EVENT obj4 checked"
+    assert_equal 9 $::v1
+    wtk::fromclient "EVENT obj4 unchecked"
+    assert_equal 3 $::v1
+    set ::v1 5
+    assert_equal "" [jsmsgs]
+    set ::v1 9
+    assert_equal {wtk.widgets['obj4'].childNodes[0].checked=true;} [jsmsgs]
+    set ::v1 3
+    assert_equal {wtk.widgets['obj4'].childNodes[0].checked=false;} [jsmsgs]
+    
+    # variable exists, is on value
+    set ::v2 5
+    wtk::grid [wtk::checkbutton .cb2 -variable v2 -onvalue 5]
+    lassign [lrange [split [jsmsgs] ";"] 0 1] create set
+    assert_equal "wtk.createCheckButton('obj5','')" $create
+    assert_equal {wtk.widgets['obj5'].childNodes[0].checked=true} $set
+    
+    # variable exists, is not on value
+    set ::v3 25
+    wtk::grid [wtk::checkbutton .cb3 -variable v3 -onvalue 5]
+    lassign [lrange [split [jsmsgs] ";"] 0 1] create set
+    assert_equal "wtk.createCheckButton('obj6','')" $create
+    assert_no_match "checked" $set
+} {}
+
 wtk::_reset
 
 test wtk-2.1 {grid debugging, start state} {
