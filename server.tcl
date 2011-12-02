@@ -66,7 +66,7 @@ proc newSession {script webpage} {
     set interp [interp create]
     dict set ::session($sessionid) interp $interp 
     dict set ::session($sessionid) msgq ""
-    $interp eval source wtk.tcl
+    if {[catch {$interp eval source wtk.tcl}]!=0} {puts $::errorInfo}
     $interp alias sendto toclient $sessionid
     $interp eval wtk::init sendto
     if {[catch {$interp eval source $script}]!=0} {puts $::errorInfo}
