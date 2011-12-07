@@ -1,6 +1,7 @@
 var wtk = {
     
     widgets : new Array(),
+    widgetInfo : new Array(),
     
     /*
      *   Initialize, and manage two AJAX connections to the server; one is used to send
@@ -63,6 +64,36 @@ var wtk = {
         w.id = id;
         wtk.widgets[parent].appendChild(w);
     },
+    
+    /*
+     * Canvas
+     */
+    
+    createCanvas : function(id) {
+        var w = wtk.CreateWidget(id,'canvas', '', '');
+        w.width = 100; w.height = 100; w.style.width = '100px'; w.style.height = '100px';
+        w.style.background = '#ffffff';
+        w.style.position = 'relative';
+        w.style.cursor = 'default';
+        w.onmousedown = function(ev) {wtk.canvasMouse(ev, id, 'mousedown');}
+        w.onmousemove = function(ev) {wtk.canvasMouse(ev, id, 'mousemove');}
+        w.onmouseup = function(ev) {wtk.canvasMouse(ev, id, 'mouseup');}
+        w.ondrag = function(ev) {wtk.canvasMouse(ev, id, 'drag');}
+        wtk.widgetInfo[id] = {items:[]};
+    },
+    
+    canvasMouse : function(ev, id, action) {
+        wtk.sendto('EVENT '+id+' '+action+' '+(ev.pageX-wtk.widgets[id].offsetLeft)+' '+(ev.pageY-wtk.widgets[id].offsetTop)+' '+ev.button);
+    },
+    
+    canvasCreateItem : function(id, cid, type, x0, y0, x1, y1) {
+        wtk.widgetInfo[id].items[cid] = {type:type, x0:x0, y0:y0, x1:x1, y1:y1};
+        var ctx = wtk.widgets[id].getContext("2d");
+        ctx.fillStyle='#ff0000';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        if (type=="line") {ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();} 
+    }
     
 };
 

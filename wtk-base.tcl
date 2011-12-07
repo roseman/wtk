@@ -34,7 +34,7 @@ namespace eval ::wtk {
     # that use -text or -textvariable, though not every widget will do so.
 
     snit::type Widget {
-        variable id; variable created; variable wobj
+        variable id; variable created; variable wobj; variable postcreatemsgs ""
         constructor {_wobj} {
             if {$_wobj==""} {set _wobj $self}; # used for root window only
             set wobj $_wobj
@@ -46,10 +46,14 @@ namespace eval ::wtk {
         method _created? {} {return $created}
         method _create {} {
             set js [$wobj _createjs]
+            append js $postcreatemsgs; set postcreatemsgs ""
             wtk::toclient $js
             set created 1
             return ""
         }
+        method _sendWhenCreated {msg} {if {[$self _created?]} {wtk::toclient $msg} else {append postcreatemsgs $msg}}
+        
+        
         method id {} {return $id}
         method jqobj {} {return "\$('#[$self id]')"}
         method jsobj {} {return "wtk.widgets\['[$self id]'\]"}
@@ -83,8 +87,14 @@ namespace eval ::wtk {
             $self _setuptextvar
         }
         
-        # variable handling; only relevant if -variable option is delegated to us
         
+        # TODO - variable handling; only relevant if -variable option is delegated to us
+        
+        
+        # bindings
+        variable bindings
+        method _bind {ev script} {set bindings($ev) $script}
+        method _fireevent {ev subs} {if {[info exists bindings($ev)]} {uplevel #0 [string map $subs $bindings($ev)]}}
     }
 
     proc getwidget {id} {return $wtk::wobj($id)}
@@ -92,7 +102,7 @@ namespace eval ::wtk {
     proc wm {args} {if {[lindex $args 0]=="title" && [lindex $args 1]=="."} {toclient "document.title='[lindex $args 2]';"}; return ""; # placeholder}
     proc winfo {args} {; # placeholder}
     proc focus {w} {$w _focus; return ""}
-    proc bind {args} {; # placeholder}
+    proc bind {w ev script} {return [$w _bind $ev $script]}
 
     # Macro that can be used to simplify the definition of any widget
     snit::macro _stdwidget {} {
@@ -105,5 +115,13 @@ namespace eval ::wtk {
         component W; delegate method * to W; delegate option -textvariable to W; delegate option -text to W 
         constructor {args} {install W using Widget %AUTO% $self; $self configurelist $args; $W _setuptextvar}
     }
+    
+    
+    # Macro used to define options which set their value and then send some Javascript command to the widget
+    snit::macro _wtkoption {opt default msg} {
+        option $opt -default $default -configuremethod _wtkoption$opt
+        method _wtkoption$opt {opt val} "set options(\$opt) \$val; set JS \[\$self jsobj\]; set V \$val; \$self _sendWhenCreated \[subst [list $msg]\]"
+    }
+    
 
 }
