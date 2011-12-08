@@ -15,6 +15,24 @@ namespace eval ::wtk {
     # method, which is passed the widget-specific type of event and any parameters.
 
 
+    # Frame
+    snit::type frame {
+        _stdwidget
+        option -padding
+        method _createjs {} {return "wtk.createFrame('[$self id]');"}    
+    }
+
+
+    # Entry widgets
+    snit::type entry {
+        _textvarwidget
+        _wtkoption -width "" {$JS.size=$V;}
+        method _createjs {} {return "wtk.createEntry('[$self id]','[$self cget -text]');"}
+        method _textchangejs {txt} {return "[$self jqobj].val('$txt');"}
+        method _event {which args} {if {$which eq "value"} {$self _textchanged -text $args 1}}
+    }
+
+
     # Button widgets
     snit::type button {
         _textvarwidget
@@ -24,12 +42,14 @@ namespace eval ::wtk {
         method _event {which} {if {$which eq "pressed"} {uplevel #0 $options(-command)}}
     }
 
+
     # Label widgets
     snit::type label {
         _textvarwidget
         method _createjs {} {return "wtk.createLabel('[$self id]','[$self cget -text]');"}
         method _textchangejs {txt} {return "[$self jqobj].html('$txt');"}
     }
+
 
     # Checkbutton
     snit::type checkbutton {
@@ -70,46 +90,47 @@ namespace eval ::wtk {
         }
         
     }
-
-    # Entry widgets
-    snit::type entry {
-        _textvarwidget
-        _wtkoption -width "" {$JS.size=$V;}
-        method _createjs {} {return "wtk.createEntry('[$self id]','[$self cget -text]');"}
-        method _textchangejs {txt} {return "[$self jqobj].val('$txt');"}
-        method _event {which args} {if {$which eq "value"} {$self _textchanged -text $args 1}}
-    }
-    
-
-    # Frame
-    snit::type frame {
-        _stdwidget
-        option -padding
-        method _createjs {} {return "wtk.createFrame('[$self id]');"}    
-    }
     
     
     # Canvas
     snit::type canvas {
-        variable mousedown 0
-        variable nextid 1
-        variable items
+        typevariable itemtypes "line"
+        typevariable opts.line {-fill strokeStyle -width lineWidth}
         _stdwidget
         _wtkoption -width 100 {$JS.width=$V;$JS.style.width='${V}px';}
         _wtkoption -height 100 {$JS.height=$V;$JS.style.height='${V}px';}
         _wtkoption -background "#ffffff" {$JS.style.background='$V';}
-        
+
+        variable mousedown 0
+        variable nextid 1
+        variable items
         method _createjs {} {return "wtk.createCanvas('[$self id]');"}
-        method create {objtype x0 y0 x1 y1 args} {
+        method create {itemtype args} {
+            if {$itemtype ni $itemtypes} {error "bad item type"}
+            lassign [_parseCoordsAndOptions $args [set opts.$itemtype]] coords opts
             set cid $nextid; incr nextid
-            set items($cid) [list type $objtype coords [list $x0 $y0 $x1 $y1]]
-            wtk::toclient "wtk.canvasCreateItem('[$self id]',$cid,'$objtype',$x0,$y0,$x1,$y1);"
+            set items($cid) [list type $itemtype coords $coords]
+            wtk::toclient "wtk.canvasCreateItem('[$self id]',$cid,'$itemtype',\[[join $coords ,]\],$opts);"
             return $cid
         }
         method _event {which args} {; # todo - make generic
             if {$which=="mousedown"} {set mousedown 1; $W _fireevent "<1>" [list %x [lindex $args 0] %y [lindex $args 1]]}
             if {$which=="mousemove"} {if {$mousedown} {set ev "<B1-Motion>"} else {set ev "<Motion>"}; $W _fireevent $ev [list %x [lindex $args 0] %y [lindex $args 1]]}
             if {$which=="mouseup"} {set mousedown 0; $W _fireevent "<B1-Release>" [list %x [lindex $args 0] %y [lindex $args 1]]}
+        }
+        proc _parseCoordsAndOptions {s optmap} {
+            set coords ""; set inopts 0; set opts ""
+            foreach {x y} [split $s] {
+                if {!$inopts && [string is integer $x]} {
+                    if {![string is integer $y]} {error "odd number of coordinates"}
+                    lappend coords $x $y
+                } else {
+                    set inopts 1
+                    if {![dict exists $optmap $x]} {error "bad option"}
+                    lappend opts "[dict get $optmap $x]:\"$y\""
+                }
+            }
+            return [list $coords "\{[join $opts ,]\}"]
         }
     }
     

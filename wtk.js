@@ -86,13 +86,14 @@ var wtk = {
         wtk.sendto('EVENT '+id+' '+action+' '+(ev.pageX-wtk.widgets[id].offsetLeft)+' '+(ev.pageY-wtk.widgets[id].offsetTop)+' '+ev.button);
     },
     
-    canvasCreateItem : function(id, cid, type, x0, y0, x1, y1) {
-        wtk.widgetInfo[id].items[cid] = {type:type, x0:x0, y0:y0, x1:x1, y1:y1};
+    canvasCreateItem : function(id, cid, type, coords, opts) {
+        wtk.widgetInfo[id].items[cid] = {type:type, coords:coords};
         var ctx = wtk.widgets[id].getContext("2d");
-        ctx.fillStyle='#ff0000';
-        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.strokeStyle='#000000'; if ('strokeStyle' in opts) {ctx.strokeStyle = opts['strokeStyle'];}
+        ctx.lineWidth = 3; if ('lineWidth' in opts) {ctx.lineWidth = opts['lineWidth'];}
         ctx.lineCap = 'round';
-        if (type=="line") {ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();} 
+        if (type=="line") {ctx.moveTo(coords[0],coords[1]); for (var i=2;i<coords.length;i+=2) {ctx.lineTo(coords[i],coords[i+1]);};ctx.stroke();} 
     }
     
 };
