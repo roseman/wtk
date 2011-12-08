@@ -39,6 +39,7 @@ proc webhandler {op sock} {
             "/"             {httpd return $sock [filecontents index.html]}
             "/demo1.html"   {httpd return $sock [newSession demo1.tcl demo1.html]}
             "/demo2.html"   {httpd return $sock [newSession demo2.tcl demo1.html]}
+            "/sketch.html"   {httpd return $sock [newSession sketch.tcl demo1.html]}
             "/demox.html"   {httpd return $sock [newSession demox.tcl demo1.html]}
             "/wtk.js"       {httpd return $sock [filecontents wtk.js] -mimetype "text/javascript"}
             "/wtkpoll.html" {if !{[sendany $sock $query(sessionid)]} {error "pending"}}
