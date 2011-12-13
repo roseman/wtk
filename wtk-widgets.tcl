@@ -17,7 +17,7 @@ namespace eval ::wtk {
 
     # Frame
     snit::type frame {
-        _stdwidget
+        _wtkwidget
         option -padding
         method _createjs {} {return "wtk.createFrame('[$self id]');"}    
     }
@@ -25,7 +25,7 @@ namespace eval ::wtk {
 
     # Entry widgets
     snit::type entry {
-        _textvarwidget
+        _wtkwidget -usetextvar
         _wtkoption -width "" {$JS.size=$V;}
         method _createjs {} {return "wtk.createEntry('[$self id]','[$self cget -text]');"}
         method _textchangejs {txt} {return "[$self jqobj].val('$txt');"}
@@ -35,7 +35,7 @@ namespace eval ::wtk {
 
     # Button widgets
     snit::type button {
-        _textvarwidget
+        _wtkwidget -usetextvar
         option -command
         method _createjs {} {return "wtk.createButton('[$self id]','[$self cget -text]');"}
         method _textchangejs {txt} {return "[$self jqobj].html('$txt');"}
@@ -45,7 +45,7 @@ namespace eval ::wtk {
 
     # Label widgets
     snit::type label {
-        _textvarwidget
+       _wtkwidget -usetextvar
         method _createjs {} {return "wtk.createLabel('[$self id]','[$self cget -text]');"}
         method _textchangejs {txt} {return "[$self jqobj].html('$txt');"}
     }
@@ -53,7 +53,7 @@ namespace eval ::wtk {
 
     # Checkbutton
     snit::type checkbutton {
-        _textvarwidget
+        _wtkwidget -usetextvar
         variable currentvalue 0
         option -command
         option -onvalue -default 1 -configuremethod _onoffchanged
@@ -96,7 +96,7 @@ namespace eval ::wtk {
     snit::type canvas {
         typevariable itemtypes "line"
         typevariable opts.line {-fill strokeStyle -width lineWidth}
-        _stdwidget
+        _wtkwidget
         _wtkoption -width 100 {$JS.width=$V;$JS.style.width='${V}px';}
         _wtkoption -height 100 {$JS.height=$V;$JS.style.height='${V}px';}
         _wtkoption -background "#ffffff" {$JS.style.background='$V';}

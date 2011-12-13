@@ -105,17 +105,12 @@ namespace eval ::wtk {
     proc bind {w ev script} {return [$w _bind $ev $script]}
 
     # Macro that can be used to simplify the definition of any widget
-    snit::macro _stdwidget {} {
-        component W; delegate method * to W
-        constructor {args} {install W using Widget %AUTO% $self; $self configurelist $args}
+    snit::macro _wtkwidget {args} {
+        component W; delegate method * to W; set extrainits ""
+        if {"-usetextvar" in $args} {delegate option -textvariable to W; delegate option -text to W; set extrainits {$W _setuptextvar}}
+        constructor {args} "install W using Widget \$\{selfns\}::W \$self; \$self configurelist \$args; $extrainits"
     }
 
-    # Macro that can be used to simplify the creation of widgets using -text and -textvariable
-    snit::macro _textvarwidget {} {
-        component W; delegate method * to W; delegate option -textvariable to W; delegate option -text to W 
-        constructor {args} {install W using Widget %AUTO% $self; $self configurelist $args; $W _setuptextvar}
-    }
-    
     
     # Macro used to define options which set their value and then send some Javascript command to the widget
     snit::macro _wtkoption {opt default msg} {
