@@ -1,2 +1,15 @@
 Requires Snit.  Run tclsh8.5 server.tcl and open your browser to http://localhost:9001
 
+
+I've recently started putting together a Tk-over-jQuery routine I'm calling web Tk (wtk). The idea is having full Tcl running on a server, with a Tk-like layer that sends commands to code running in a browser.
+
+For those of you who remember it, this is conceptually similar to ProxyTk (see http://www.markroseman.com/pubs/proxytk.pdf).
+
+An important thing is that its not tied into any particular web server or other communication channel; in fact, it just assumes there is a communication channel of some sort. This might be an AJAX connection pair, WebSockets, socket.io, etc. Or it might not even be a remote communication. You could well have a desktop/iPad app whose UI is a web view, and the "communication" between "server" and "client" might be just a procedure call.
+
+The public git clone address is git://github.com/roseman/wtk.git
+
+The implementation is based on Snit, and the demo uses simple Ajax communication over a generic minihttpd.tcl-derived web server. Incidentally, while I've never really used Snit before, it's a clear win for this type of thing; you'll see from the widget code that the amount of overhead needed to translate the "tk-like" commands into Javascript/jQuery calls is fairly minimal. This is important as I want to make this very easy for people to extend, wrap other jQuery widgets, etc.
+
+It's still at what I'd consider the proof of concept stage, but it feels very promising.
+
