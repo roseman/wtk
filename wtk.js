@@ -1,7 +1,7 @@
 var wtk = {
     
     widgets : new Array(),
-    widgetInfo : new Array(),
+    objs : new Array(),
     
     /*
      *   Initialize, and manage two AJAX connections to the server; one is used to send
@@ -45,7 +45,7 @@ var wtk = {
     
     createFrame   : function(id) { wtk.CreateWidget(id, 'div', '', '');},
     
-    createCheckButton : function(id,txt) { 
+    createCheckButton : function(id,txt) {
         var w = wtk.CreateWidget(id,'span', '', ''); 
         var c = w.appendChild(document.createElement('input'));
         var l = w.appendChild(document.createElement('span'));
@@ -69,32 +69,85 @@ var wtk = {
      * Canvas
      */
     
-    createCanvas : function(id) {
-        var w = wtk.CreateWidget(id,'canvas', '', '');
+    Canvas : function(w,id) {
+        var self = this;
+        this.w = w;
+        this.id = id;
+        this.ctx = null;
+        this.items = [];
+        this.context = w.getContext("2d");
+        this.drawtimer = null;
+        this.ghostcanvas = null;
+        this.gctx = null;
         w.width = 100; w.height = 100; w.style.width = '100px'; w.style.height = '100px';
         w.style.background = '#ffffff';
         w.style.position = 'relative';
         w.style.cursor = 'default';
-        w.onmousedown = function(ev) {wtk.canvasMouse(ev, id, 'mousedown');}
-        w.onmousemove = function(ev) {wtk.canvasMouse(ev, id, 'mousemove');}
-        w.onmouseup = function(ev) {wtk.canvasMouse(ev, id, 'mouseup');}
-        w.ondrag = function(ev) {wtk.canvasMouse(ev, id, 'drag');}
-        wtk.widgetInfo[id] = {items:[]};
+        
+        w.onmousedown = function(ev) {self.handleMouse(ev, 'mousedown');}
+        w.onmousemove = function(ev) {self.handleMouse(ev, 'mousemove');}
+        w.onmouseup = function(ev) {self.handleMouse(ev, 'mouseup');}
+        w.ondrag = function(ev) {self.handleMouse(ev, 'drag');}
+        
+        this.createItem = function(cid, type, coords, opts) {
+            var o = {'cid':cid,'type':type,'coords':coords,'opts':opts};
+            this.items.push(o);
+            this.scheduleDraw();
+        }
+        
+        this.scheduleDraw = function() {if (this.drawtimer==null) {var self=this;this.drawtimer = setTimeout(function() {self.draw()}, 100)}}
+        
+        this.draw = function() {
+            var self = this;
+            this.drawtimer = null;
+            var ctx = this.context;
+            ctx.clearRect(0,0,this.w.width,this.w.height);
+            ctx.beginPath();
+            $.each(this.items, function(idx,i) {self.drawItem(ctx,i)});
+        }
+        
+        this.drawItem = function(ctx,i,color) {
+            ctx.beginPath();
+            ctx.strokeStyle='#000000'; if ('strokeStyle' in i.opts && color!='black') {ctx.strokeStyle = i.opts['strokeStyle'];}
+            ctx.fillStyle='#000000'; if ('fillStyle' in i.opts && color!='black') {ctx.fillStyle = i.opts['fillStyle'];}
+            ctx.lineWidth = 3; if ('lineWidth' in i.opts) {ctx.lineWidth = i.opts['lineWidth'];}
+            ctx.lineCap = 'round';
+            if (i.type=="line") {ctx.moveTo(i.coords[0],i.coords[1]); for (var j=2;j<i.coords.length;j+=2) {ctx.lineTo(i.coords[j],i.coords[j+1]);};ctx.stroke();} 
+            if (i.type=="rectangle") {ctx.fillRect(i.coords[0],i.coords[1],i.coords[2]-i.coords[0],i.coords[3]-i.coords[1]);}
+        }
+      
+        this.itemAt = function(x,y) {
+            /* use a 'ghost canvas' - see http://simonsarris.com/blog/140-canvas-moving-selectable-shapes */
+            if (this.ghostcanvas==null) {this.ghostcanvas = document.createElement('canvas');this.gctx = null;}
+            if (this.ghostcanvas.width!=this.w.width || this.ghostcanvas.height!=this.w.height) {
+                this.ghostcanvas.width = this.w.width; this.ghostcanvas.height = this.w.height; this.gctx = null;
+            }
+            if (this.gctx==null) {this.gctx = this.ghostcanvas.getContext("2d");}
+            this.gctx.clearRect(0,0,this.ghostcanvas.width,this.ghostcanvas.height);
+            for (var i = this.items.length-1; i>=0; i--) {
+                this.drawItem(this.gctx, this.items[i],'black');
+                var imageData = this.gctx.getImageData(x,y,1,1);
+                if (imageData.data[3]>0) {
+                    return this.items[i].cid;
+                }
+            }
+            return '';
+        }
+      
+        this.handleMouse = function(ev, action) {
+            var itemhit = '';
+            var x = ev.pageX-this.w.offsetLeft;
+            var y = ev.pageY-this.w.offsetTop;
+            if (action=="mousedown") {itemhit = this.itemAt(x,y);}
+            wtk.sendto('EVENT '+this.id+' '+action+' '+x+' '+y+' '+ev.button+' '+itemhit);
+        }
+        
     },
-    
-    canvasMouse : function(ev, id, action) {
-        wtk.sendto('EVENT '+id+' '+action+' '+(ev.pageX-wtk.widgets[id].offsetLeft)+' '+(ev.pageY-wtk.widgets[id].offsetTop)+' '+ev.button);
+        
+    createCanvas : function(id) {
+        var w = wtk.CreateWidget(id,'canvas', '', '');
+        wtk.objs[id] = new wtk.Canvas(w,id);
     },
-    
-    canvasCreateItem : function(id, cid, type, coords, opts) {
-        wtk.widgetInfo[id].items[cid] = {type:type, coords:coords};
-        var ctx = wtk.widgets[id].getContext("2d");
-        ctx.beginPath();
-        ctx.strokeStyle='#000000'; if ('strokeStyle' in opts) {ctx.strokeStyle = opts['strokeStyle'];}
-        ctx.lineWidth = 3; if ('lineWidth' in opts) {ctx.lineWidth = opts['lineWidth'];}
-        ctx.lineCap = 'round';
-        if (type=="line") {ctx.moveTo(coords[0],coords[1]); for (var i=2;i<coords.length;i+=2) {ctx.lineTo(coords[i],coords[i+1]);};ctx.stroke();} 
-    }
     
 };
 
