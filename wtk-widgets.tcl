@@ -94,8 +94,9 @@ namespace eval ::wtk {
     
     # Canvas
     snit::type canvas {
-        typevariable itemtypes "line"
+        typevariable itemtypes "line rectangle"
         typevariable opts.line {-fill strokeStyle -width lineWidth}
+        typevariable opts.rectangle {-fill fillStyle -width lineWidth -outline strokeStyle}
         _wtkwidget
         _wtkoption -width 100 {$JS.width=$V;$JS.style.width='${V}px';}
         _wtkoption -height 100 {$JS.height=$V;$JS.style.height='${V}px';}
@@ -110,11 +111,11 @@ namespace eval ::wtk {
             lassign [_parseCoordsAndOptions $args [set opts.$itemtype]] coords opts
             set cid $nextid; incr nextid
             set items($cid) [list type $itemtype coords $coords]
-            wtk::toclient "wtk.canvasCreateItem('[$self id]',$cid,'$itemtype',\[[join $coords ,]\],$opts);"
+            wtk::toclient "wtk.objs\['[$self id]'\].createItem($cid,'$itemtype',\[[join $coords ,]\],$opts);"
             return $cid
         }
         method _event {which args} {; # todo - make generic
-            if {$which=="mousedown"} {set mousedown 1; $W _fireevent "<1>" [list %x [lindex $args 0] %y [lindex $args 1]]}
+            if {$which=="mousedown"} {set mousedown 1; set subs [list %x [lindex $args 0] %y [lindex $args 1]]; $W _fireevent "<1>" $subs; if {[lindex $args 3]!=""} {[$self _fireevent [lindex $args 3] "<1>" $subs]}}
             if {$which=="mousemove"} {if {$mousedown} {set ev "<B1-Motion>"} else {set ev "<Motion>"}; $W _fireevent $ev [list %x [lindex $args 0] %y [lindex $args 1]]}
             if {$which=="mouseup"} {set mousedown 0; $W _fireevent "<B1-Release>" [list %x [lindex $args 0] %y [lindex $args 1]]}
         }
@@ -132,6 +133,12 @@ namespace eval ::wtk {
             }
             return [list $coords "\{[join $opts ,]\}"]
         }
+        
+        variable bindings
+        method bind {id ev script} {set bindings(${id},$ev) $script}
+        method _fireevent {id ev subs} {if {[info exists bindings(${id},$ev)]} {uplevel #0 [string map $subs $bindings(${id},$ev)]}}
+        
+        
     }
     
 }
